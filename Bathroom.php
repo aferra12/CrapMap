@@ -9,5 +9,5 @@ class Bathroom extends Model
 {
     use HasFactory;
 
-    protected $fillable=['name', 'location', 'code', 'note'];
+    protected $fillable=['name', 'location', 'code', 'note', 'latitude', 'longitude'];
 }

@@ -12,7 +12,11 @@ Route::get('/', [BathroomController::class, 'bathrooms']); //-> name('bathrooms'
 
 Route::post('/', [BathroomController::class, 'store']);
 
-Route::get('/{bathroom}', [BathroomController::class, 'edit']);
+Route::post('/', [BathroomController::class, 'store']);//->name('bathrooms.store');
+
+Route::put('/{bathroom}', [BathroomController::class, 'update']);//->name('bathrooms.update');
+
+//Route::get('/{bathroom}', [BathroomController::class, 'edit']);
 
 //Route::put('/{bathroom}', [BathroomController::class, 'update']);
 
