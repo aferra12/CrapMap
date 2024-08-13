@@ -126,7 +126,7 @@ function addMarkers() {
     if (bathroom.latitude && bathroom.longitude) {
       const marker = L.marker([bathroom.latitude, bathroom.longitude])
         .addTo(map.value)
-        .bindPopup(`${bathroom.name}<br>${bathroom.location}<br>${bathroom.code}<br>${bathroom.note}`);
+        .bindPopup(`<b>Name: </b>${bathroom.name}<br><b>Location: </b>${bathroom.location}<br><b>Code: </b>${bathroom.code}<br><b>Note: </b>${bathroom.note}`);
       
       marker.on('click', () => {
         selectedBathroom.value = bathroom;
