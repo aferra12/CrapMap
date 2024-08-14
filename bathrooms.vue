@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css';
 import { onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
 
+// set up basic props to be used
+
 const props = defineProps({
   errors: Object,
   bathrooms: Object, //or just bathroom if you want the current,
@@ -14,6 +16,8 @@ const props = defineProps({
 
 let showPopup = ref(false);
 
+// set up the intial entry form
+
 const form = useForm({
   name: null, // can do props.bathroom.name
   location: null,
@@ -21,18 +25,23 @@ const form = useForm({
   note: null,
 });
 
+// set up the form for updating duplicates
+
 let updateForm = useForm({
-  name: '',//props.existingEntry?.name ?? null,
-  location: '',//props.existingEntry?.location ?? null,
-  code: '',//props.existingEntry?.code ?? null,
-  note: ''//props.existingEntry?.note ?? null,
+  name: '',
+  location: '',
+  code: '',
+  note: ''
 });
+
+// handle the processing upon submit
 
 function submit() {
   form.post('/', {
     preserveState: true,
     preserveScroll: true,
     onSuccess: (page) => {
+      // if its a dupe, save the values to populate the update form
       if (page.props.duplicate) {
         showPopup.value = true;
         updateForm.name = page.props.existingEntry.name;
@@ -47,6 +56,8 @@ function submit() {
   });
 }
 
+// Handle submitting the updated entry
+
 function updateEntry() {
   if (props.existingEntry) {
     updateForm.put(`/${props.existingEntry.id}`, {
@@ -59,6 +70,8 @@ function updateEntry() {
     });
   }
 }
+
+// reset all the forms once they are submitted
 
 function resetForm() {
 
@@ -77,16 +90,41 @@ function cancelUpdate() {
   updateForm.reset();
 }
 
+// THIS HANDLES GENERATING PINS ON THE MAP FROM FORM INPUTS
 
 const map = ref(null);
 const markers = ref([]);
 const selectedBathroom = ref(null);
 const userMarker = ref(null);
 
+// add bathroom markers to the map
+
 function addMarkers() {
   markers.value.forEach(marker => map.value.removeLayer(marker));
   markers.value = [];
 
+  props.bathrooms.forEach(bathroom => {
+    if (bathroom.latitude && bathroom.longitude) {
+      const marker = L.marker([bathroom.latitude, bathroom.longitude])
+        .addTo(map.value)
+        .bindPopup(`<b>Name: </b>${bathroom.name}<br><b>Location: </b>${bathroom.location}<br><b>Code: </b>${bathroom.code}<br><b>Note: </b>${bathroom.note}`);
+      
+      marker.on('click', () => {
+        selectedBathroom.value = bathroom;
+      });
+
+      markers.value.push(marker);
+    }
+  });
+  if (markers.value.length > 0) {
+    const group = L.featureGroup(markers.value);
+    map.value.fitBounds(group.getBounds().pad(0.1));
+  }
+}
+
+// add the marker signifying the user's location
+
+function addUserMarker() {
   if ("geolocation" in navigator) {
     userMarker.value = ref(null);
 
@@ -121,42 +159,39 @@ function addMarkers() {
   } else {
     console.log("Geolocation is not supported by this browser.");
   }
+}
 
-  props.bathrooms.forEach(bathroom => {
-    if (bathroom.latitude && bathroom.longitude) {
-      const marker = L.marker([bathroom.latitude, bathroom.longitude])
-        .addTo(map.value)
-        .bindPopup(`<b>Name: </b>${bathroom.name}<br><b>Location: </b>${bathroom.location}<br><b>Code: </b>${bathroom.code}<br><b>Note: </b>${bathroom.note}`);
-      
-      marker.on('click', () => {
-        selectedBathroom.value = bathroom;
-      });
+// center the map around the submitted bathroom
 
-      markers.value.push(marker);
-    }
-  });
-  if (markers.value.length > 0) {
-    const group = L.featureGroup(markers.value);
-    map.value.fitBounds(group.getBounds().pad(0.1));
+function centerMapOnNewBathroom() {
+  const mostRecentBathroom = props.bathrooms[props.bathrooms.length - 1];
+  if (mostRecentBathroom && mostRecentBathroom.latitude && mostRecentBathroom.longitude) {
+    map.value.setView([mostRecentBathroom.latitude, mostRecentBathroom.longitude], 15);
   }
 }
 
+// initialize the map on a page load
+
 onMounted(() => {
-  map.value = L.map('map');//.setView([0, 0], 2);
+  map.value = L.map('map');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map.value);
 
   // Add markers after the map is initialized
+  addUserMarker();
   addMarkers();
 
 });
 
-// Update the watch function to use the new addMarkers function
+// Watch to see if a bathroom is entered and then adjust some of the map
+
 watch(() => props.bathrooms, () => {
   addMarkers();
+  centerMapOnNewBathroom();
 }, { deep: true });
 
+// function for opening Apple or Google Maps depending on your device OS
 
 function getDirections() {
   if (selectedBathroom.value && selectedBathroom.value.latitude && selectedBathroom.value.longitude) {
@@ -188,6 +223,8 @@ function getDirections() {
 </script>
 
 <template>
+
+<!--Create the input form-->
 
   <div class="container mx-auto p-10">
     <div class="flex flex-col md:flex-row md:space-x-4">
@@ -221,6 +258,8 @@ function getDirections() {
           </div>
         </div>
       </div>
+
+<!--Display the map and info that is associated to bathrooms-->
 
   <div class="w-full md:w-2/3">
         <div id="map" class="md:h-2/3 rounded-lg shadow-lg mb-4 z-10"></div>
@@ -257,6 +296,8 @@ function getDirections() {
           <p v-else class="text-center text-gray-600">Click on a map marker to view bathroom details.</p>
         </div>
 
+<!--Display the how-to section-->
+
         <div class="bg-gray rounded-lg shadow-lg border-t border-b p-4 md:h-1/6">
           <table class="w-full">
             <thead>
@@ -284,6 +325,8 @@ function getDirections() {
       </div>
     </div>
   </div>
+
+<!--Handle what to show when there is a duplicate entry-->
 
 <div v-if="showPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
   <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
